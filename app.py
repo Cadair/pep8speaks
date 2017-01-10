@@ -73,13 +73,15 @@ def main():
                 "results": {},
             }
 
+            # Download configs
+            config_files = ['.pep8speaks.yml', 'setup.cfg']
             # Configuration file
             r = requests.get("https://api.github.com/repos/" + \
                             repository + "/contents/").json()
             for content in r:
-                if content["name"] == ".pep8speaks.yml":
+                if content["name"] in config_files:
                     res = requests.get(content["download_url"])
-                    with open(".pep8speaks.yml", "w+") as config_file:
+                    with open(content["name"], "w+") as config_file:
                         config_file.write(res.text)
 
             config = {"ignore" : [],
@@ -106,8 +108,6 @@ def main():
             except:  # Bad yml file
                 pass
 
-            os.remove(".pep8speaks.yml")
-
             # Run pycodestyle
             r = requests.get(diff_url)
             lines = list(r.iter_lines())
@@ -126,9 +126,9 @@ def main():
                                  "/" + file)
                 with open("file_to_check.py", 'w+') as file_to_check:
                     file_to_check.write(r.text)
-                checker = pycodestyle.Checker('file_to_check.py')
+                checker = pycodestyle.StyleGuide(config_file='setup.cfg')
                 with redirected(stdout='pycodestyle_result.txt'):
-                    checker.check_all()
+                    checker.check_files(paths=['file_to_check.py'])
                 with open("pycodestyle_result.txt", "r") as f:
                     data["results"][file] = f.readlines()
                 data["results"][file] = [i.replace("file_to_check.py", file)[1:] for i in data["results"][file]]
@@ -142,6 +142,10 @@ def main():
                 os.remove("file_to_check.py")
                 os.remove("pycodestyle_result.txt")
 
+            # remove used config files:
+            for name in config_files:
+                if os.path.exists(name):
+                    os.remove(name)
 
 
             # Write the comment body
@@ -181,7 +185,6 @@ def main():
                     comment += "You've still not checked other resources!"
                 else:
                     comment += config["message"]["updated"]["footer"]
-
 
             # Do not repeat the comment made on the PR by the bot
             data["pr_number"] = request.json["number"]
@@ -224,4 +227,4 @@ app.config['SESSION_TYPE'] = 'filesystem'
 
 sess.init_app(app)
 app.debug = True
-# app.run()
+#app.run()
