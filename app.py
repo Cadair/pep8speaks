@@ -76,15 +76,15 @@ def main():
             # Download configs
             config_files = ['.pep8speaks.yml', 'setup.cfg']
             # Configuration file
-            r = requests.get("https://api.github.com/repos/" + \
-                            repository + "/contents/").json()
+            r = requests.get("https://api.github.com/repos/" +
+                             repository + "/contents/").json()
             for content in r:
                 if content["name"] in config_files:
                     res = requests.get(content["download_url"])
                     with open(content["name"], "w+") as config_file:
                         config_file.write(res.text)
 
-            config = {"ignore" : [],
+            config = {"ignore": [],
                       "message": {
                         "opened": {"header": "", "footer": ""},
                         "updated": {"header": "", "footer": ""}
@@ -111,7 +111,7 @@ def main():
             # Run pycodestyle
             r = requests.get(diff_url)
             lines = list(r.iter_lines())
-            ## All the python files with additions
+            # All the python files with additions
             files_to_analyze = []
             for i in range(len(lines)):
                 line = lines[i]
@@ -121,8 +121,8 @@ def main():
                         files_to_analyze.append(line[5:])
 
             for file in files_to_analyze:
-                r = requests.get("https://raw.githubusercontent.com/" + \
-                                 repository + "/" + after_commit_hash + \
+                r = requests.get("https://raw.githubusercontent.com/" +
+                                 repository + "/" + after_commit_hash +
                                  "/" + file)
                 with open("file_to_check.py", 'w+') as file_to_check:
                     file_to_check.write(r.text)
@@ -131,9 +131,10 @@ def main():
                     checker.check_files(paths=['file_to_check.py'])
                 with open("pycodestyle_result.txt", "r") as f:
                     data["results"][file] = f.readlines()
-                data["results"][file] = [i.replace("file_to_check.py", file)[1:] for i in data["results"][file]]
+                for i in data["results"][file]:
+                    data["results"][file] = [i.replace("file_to_check.py", file)[1:]]
 
-                ## Remove the errors and warnings to be ignored from config
+                # Remove the errors and warnings to be ignored from config
                 for error in list(data["results"][file]):
                     for to_ignore in config["ignore"]:
                         if to_ignore in error:
@@ -147,11 +148,10 @@ def main():
                 if os.path.exists(name):
                     os.remove(name)
 
-
             # Write the comment body
             comment = ""
 
-            ## Header
+            # Header
             if request.json["action"] == "opened":
                 if config["message"]["opened"]["header"] == "":
                     comment = "Hello @" + author + "! Thanks for submitting the PR.\n\n"
@@ -162,7 +162,7 @@ def main():
                     comment = "Hello @" + author + "! Thanks for updating the PR.\n\n"
                 else:
                     comment = config["message"]["updated"]["header"] + "\n\n"
-            ## Body
+            # Body
             for file in list(data["results"].keys()):
                 if len(data["results"][file]) == 0:
                     comment += " - There are no PEP8 issues in the file `" + file[1:] + "` !"
@@ -174,7 +174,7 @@ def main():
                     comment += "```"
                 comment += "\n\n"
 
-            ## Footer
+            # Footer
             if request.json["action"] == "opened":
                 if config["message"]["opened"]["footer"] == "":
                     comment += "Please check out other resources."
@@ -227,4 +227,4 @@ app.config['SESSION_TYPE'] = 'filesystem'
 
 sess.init_app(app)
 app.debug = True
-#app.run()
+# app.run()
